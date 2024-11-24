@@ -1,6 +1,7 @@
 package com.example.trilha;
 
 import android.Manifest;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
@@ -21,10 +22,19 @@ public abstract class HelpLocation extends AppCompatActivity {
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private LocationRequest mLocationRequest;
     private LocationCallback mLocationCallback;
+    private SharedPreferences locationPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Inicializa SharedPreferences específicas para localização
+        locationPreferences = getSharedPreferences("LocationSettings", MODE_PRIVATE);
+
+        // Define configurações padrão (se não existirem)
+        if (!locationPreferences.contains("updateInterval")) {
+            locationPreferences.edit().putInt("updateInterval", 5000).apply(); // Intervalo padrão: 5 segundos
+        }
     }
 
     @Override
@@ -40,7 +50,11 @@ public abstract class HelpLocation extends AppCompatActivity {
 
     private void onStartLocationUpdates() {
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-        mLocationRequest = new LocationRequest.Builder(5000).build();
+
+        // Obtém o intervalo de atualização das preferências
+        int updateInterval = locationPreferences.getInt("updateInterval", 5000);
+        mLocationRequest = new LocationRequest.Builder(updateInterval).build();
+
         mLocationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
@@ -50,10 +64,10 @@ public abstract class HelpLocation extends AppCompatActivity {
                 }
             }
         };
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-
             return;
         }
         mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
