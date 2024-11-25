@@ -48,7 +48,7 @@ public abstract class HelpLocation extends AppCompatActivity {
         }
     }
 
-    private void onStartLocationUpdates() {
+    void onStartLocationUpdates() {
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         // Obtém o intervalo de atualização das preferências

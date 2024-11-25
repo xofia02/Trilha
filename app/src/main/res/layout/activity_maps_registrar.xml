@@ -1,9 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
-<fragment xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:map="http://schemas.android.com/apk/res-auto"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/map"
-    android:name="com.google.android.gms.maps.SupportMapFragment"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MapsRegistrar" />
+    android:background="#FFFFFF"
+    android:padding="00dp">
+
+    <!-- Mapa -->
+
+    <!-- Informações de velocidade -->
+
+    <!-- Informações de distância -->
+
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="585dp"
+        android:layout_alignWithParentIfMissing="false"
+        android:layout_alignParentStart="false"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="false"
+        android:layout_centerHorizontal="false"
+        android:layout_marginLeft="0dp"
+        android:layout_marginEnd="0dp"
+        tools:context=".MapsRegistrar" />
+
+    <TextView
+        android:id="@+id/speedText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="627dp"
+        android:text="Velocidade: 0 km/h"
+        android:textColor="#000000"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/distanceText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/speedText"
+        android:layout_marginTop="10dp"
+        android:text="Distância: 0 m"
+        android:textColor="#000000"
+        android:textSize="18sp" />
+
+    <!-- Informações de tempo -->
+    <TextView
+        android:id="@+id/timeText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/distanceText"
+        android:layout_marginTop="10dp"
+        android:text="Tempo: 00:00"
+        android:textColor="#000000"
+        android:textSize="18sp" />
+
+</RelativeLayout>

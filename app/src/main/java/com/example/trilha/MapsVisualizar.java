@@ -1,39 +1,56 @@
 package com.example.trilha;
 
-import androidx.fragment.app.FragmentActivity;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
+import android.widget.TextView;
 
-import com.example.trilha.databinding.ActivityMapsVisualizarBinding;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.maps.android.SphericalUtil;
 
-import java.util.ArrayList;
+import java.text.SimpleDateFormat;
+import java.util.List;
+import java.util.Locale;
 
-public class MapsVisualizar extends FragmentActivity implements OnMapReadyCallback {
+public class MapsVisualizar extends AppCompatActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
-    private ActivityMapsVisualizarBinding binding;
-    private TrilhaDB trilhaDB; // Banco de dados para recuperar waypoints
+    private TrilhaDB trilhaDB; // Banco de dados
+    private TextView distanceText, speedText, startTimeText, durationText;
+    private SharedPreferences sharedPreferences;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_maps_visualizar);
 
-        binding = ActivityMapsVisualizarBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
-
-        // Inicializa o banco de dados
+        // Inicializa banco de dados
         trilhaDB = new TrilhaDB(this);
 
-        // Obtém o fragmento do mapa e inicializa
+        // Inicializa as preferências compartilhadas
+        sharedPreferences = getSharedPreferences("MapSettings", MODE_PRIVATE);
+
+        // Inicializa os TextViews
+        distanceText = findViewById(R.id.distanceText);
+        speedText = findViewById(R.id.speedText);
+        startTimeText = findViewById(R.id.startTimeText);
+        durationText = findViewById(R.id.durationText);
+
+        // Configura o mapa
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
+
         }
     }
 
@@ -41,27 +58,80 @@ public class MapsVisualizar extends FragmentActivity implements OnMapReadyCallba
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+    // Recupera as configurações do SharedPreferences
+        int mapType = sharedPreferences.getInt("mapType", GoogleMap.MAP_TYPE_NORMAL);
+        boolean isCourseUp = sharedPreferences.getBoolean("isCourseUp", false);
+
+        // Aplica o tipo de mapa configurado
+        mMap.setMapType(mapType);
+
         // Habilita os controles de zoom no mapa
         mMap.getUiSettings().setZoomControlsEnabled(true);
-
-        // Recupera os waypoints do banco de dados
-        ArrayList<Waypoint> waypoints = trilhaDB.recuperarWaypoints();
+        // Carregar waypoints do banco de dados
+        List<Waypoint> waypoints = trilhaDB.getAllWaypoints();
 
         if (waypoints != null && !waypoints.isEmpty()) {
-            // Adiciona marcadores no mapa para cada waypoint
+            Log.d("MapsVisualizar", "Waypoints encontrados: " + waypoints.size());
+
+            // Configuração do Polyline
+            PolylineOptions polylineOptions = new PolylineOptions()
+                    .color(android.graphics.Color.RED)  // Cor da linha para visibilidade
+                    .width(12);  // Aumentando a largura da linha
+            LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
+            LatLng previousLatLng = null;
+            float totalDistance = 0;
+
+            // Adiciona os pontos da trilha ao Polyline e calcula a distância
             for (Waypoint waypoint : waypoints) {
-                LatLng latLng = new LatLng(waypoint.getLatitude(), waypoint.getLongitude());
-                mMap.addMarker(new MarkerOptions()
-                        .position(latLng)
-                        .title("Altitude: " + waypoint.getAltitude() + "m"));
+                LatLng currentLatLng = new LatLng(waypoint.getLatitude(), waypoint.getLongitude());
+                polylineOptions.add(currentLatLng);
+                boundsBuilder.include(currentLatLng);
+
+                if (previousLatLng != null) {
+                    totalDistance += SphericalUtil.computeDistanceBetween(previousLatLng, currentLatLng);
+                //SphericalUtil=fornece utilitários para cálculos geométricos sobre a superfície da Terra,
+                    // considerada como uma esfera. Ela facilita a realização de operações como distâncias,
+                    // ângulos e posições relativas entre pontos geográficos, sem a necessidade de implementar
+                    // esses cálculos manualmente.
+                }
+                previousLatLng = currentLatLng;
             }
 
-            // Move a câmera para o primeiro waypoint
-            LatLng firstWaypoint = new LatLng(waypoints.get(0).getLatitude(), waypoints.get(0).getLongitude());
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(firstWaypoint, 15f));
+            // Adiciona a linha da trilha no mapa
+            mMap.addPolyline(polylineOptions);
+            Log.d("MapsVisualizar", "Polyline adicionada");
+
+            // Ajusta o zoom do mapa para mostrar toda a trilha
+            LatLngBounds bounds = boundsBuilder.build();
+            int padding = 100; // Aumentar o padding para garantir que a trilha caiba
+            mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding));
+
+            // Exibe os dados da trilha
+            displayTrailData(waypoints, totalDistance);
         } else {
-            // Exibe uma mensagem no console se nenhum waypoint for encontrado
-            System.out.println("Nenhum waypoint encontrado no banco de dados.");
+            Log.d("MapsVisualizar", "Nenhum waypoint encontrado.");
         }
+    }
+
+    private void displayTrailData(List<Waypoint> waypoints, float totalDistance) {
+        // Data/hora de início
+        long startTimestamp = waypoints.get(0).getTimestamp();
+        String startTime = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+                .format(startTimestamp);
+        startTimeText.setText("Início: " + startTime);
+
+        // Duração da trilha
+        long endTimestamp = waypoints.get(waypoints.size() - 1).getTimestamp();
+        long durationInSeconds = (endTimestamp - startTimestamp) / 1000;
+        String duration = String.format(Locale.getDefault(), "%02d:%02d:%02d",
+                durationInSeconds / 3600, (durationInSeconds % 3600) / 60, durationInSeconds % 60);
+        durationText.setText("Duração: " + duration);
+
+        // Distância total
+        distanceText.setText(String.format(Locale.getDefault(), "Distância: %.2f m", totalDistance));
+
+        // Velocidade média
+        float averageSpeed = (totalDistance / durationInSeconds) * 3.6f; // m/s para km/h
+        speedText.setText(String.format(Locale.getDefault(), "Velocidade média: %.2f km/h", averageSpeed));
     }
 }

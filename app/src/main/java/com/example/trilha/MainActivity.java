@@ -10,7 +10,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_LOCATION_PERMISSION = 1;
@@ -47,7 +46,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-    // Botões
+
+    // Funções de navegação entre atividades
     public void abrirConfigurar(View view) {
         Intent intent = new Intent(this, MapsConfigurar.class);
         startActivity(intent);
@@ -61,5 +61,5 @@ public class MainActivity extends AppCompatActivity {
     public void abrirVisualizar(View view) {
         Intent intent = new Intent(this, MapsVisualizar.class);
         startActivity(intent);
-}}
-
+    }
+}

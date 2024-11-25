@@ -3,6 +3,7 @@ package com.example.trilha;
 import android.content.SharedPreferences;
 import android.location.Location;
 import android.os.Bundle;
+import android.widget.TextView;
 
 import com.example.trilha.databinding.ActivityMapsRegistrarBinding;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -18,6 +19,12 @@ public class MapsRegistrar extends HelpLocation implements OnMapReadyCallback {
     private SharedPreferences sharedPreferences;
     private TrilhaDB trilhaDB; // Banco de dados para armazenar trilhas
     private int waypointCounter = 0; // Contador de waypoints
+    private Location previousLocation = null;
+    private long startTime;
+
+    // Variáveis para calcular distância, velocidade e tempo
+    private float totalDistance = 0; // Distância total percorrida
+    private TextView speedText, distanceText, timeText; // TextViews para exibir as informações
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,14 +33,14 @@ public class MapsRegistrar extends HelpLocation implements OnMapReadyCallback {
         binding = ActivityMapsRegistrarBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // Inicializa as preferências compartilhadas
-        sharedPreferences = getSharedPreferences("MapSettings", MODE_PRIVATE);
-
         // Inicializa o banco de dados
         trilhaDB = new TrilhaDB(this);
 
-        // Apaga trilha anterior (se necessário)
+        // Apaga os waypoints antigos ao abrir a atividade, ou seja, quando apertamos o botao os waypoints são apagados
         trilhaDB.apagarTrilha();
+
+        // Inicializa as preferências compartilhadas
+        sharedPreferences = getSharedPreferences("MapSettings", MODE_PRIVATE);
 
         // Obtém o fragmento do mapa e inicializa
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -41,6 +48,14 @@ public class MapsRegistrar extends HelpLocation implements OnMapReadyCallback {
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
+
+        // Inicializa os TextViews
+        speedText = findViewById(R.id.speedText);
+        distanceText = findViewById(R.id.distanceText);
+        timeText = findViewById(R.id.timeText);
+
+        // Define o horário de início
+        startTime = System.currentTimeMillis();
     }
 
     @Override
@@ -61,8 +76,6 @@ public class MapsRegistrar extends HelpLocation implements OnMapReadyCallback {
         if (checkLocationPermission()) {
             mMap.setMyLocationEnabled(true); // Exibe a bolinha azul
         }
-
-
     }
 
     @Override
@@ -78,15 +91,37 @@ public class MapsRegistrar extends HelpLocation implements OnMapReadyCallback {
             mMap.animateCamera(CameraUpdateFactory.newCameraPosition(
                     new com.google.android.gms.maps.model.CameraPosition.Builder()
                             .target(currentLatLng)
-                            .zoom(mMap.getCameraPosition().zoom) // Mantém o zoom atual
-                            .bearing(isCourseUp ? location.getBearing() : 0) // Curso ou norte
+                            .zoom(mMap.getCameraPosition().zoom) // Mantém o zoom
+                            .bearing(isCourseUp ? location.getBearing() : 0) // Curso ou Norte
                             .tilt(0) // Sem inclinação
                             .build()
             ));
 
-            // Grava o waypoint no banco de dados
+            // Calcula a distância total percorrida
+            if (previousLocation != null) {
+                totalDistance += previousLocation.distanceTo(location); // Calcula a distância entre dois pontos
+            }
+            previousLocation = location;
+
+            // Atualiza a distância na interface
+            distanceText.setText("Distância: " + totalDistance + " m");
+
+            // Calcula a velocidade (em km/h)
+            float speed = location.getSpeed() * 3.6f; // Converte de m/s para km/h
+            speedText.setText("Velocidade: " + String.format("%.2f", speed) + " km/h");
+
+            // Calcula o tempo transcorrido
+            long elapsedTime = (System.currentTimeMillis() - startTime) / 1000; // Em segundos
+            int minutes = (int) (elapsedTime / 60);
+            int seconds = (int) (elapsedTime % 60);
+            timeText.setText(String.format("Tempo: %02d:%02d", minutes, seconds));
+
+            // Cria e grava o waypoint no banco de dados, incluindo o timestamp e a velocidade
+            long timestamp = System.currentTimeMillis(); // Define o timestamp
             Waypoint waypoint = new Waypoint(location);
-            trilhaDB.registrarWaypoint(waypoint);
+            waypoint.setTimestamp(timestamp); // Define o timestamp no waypoint
+            waypoint.setVelocity(speed); // Define a velocidade no waypoint
+            trilhaDB.registrarWaypoint(waypoint); // Salva o waypoint no banco
 
             // Incrementa o contador de waypoints
             waypointCounter++;
