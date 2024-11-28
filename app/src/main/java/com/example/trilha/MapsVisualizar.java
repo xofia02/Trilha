@@ -128,7 +128,7 @@ public class MapsVisualizar extends AppCompatActivity implements OnMapReadyCallb
         durationText.setText("Duração: " + duration);
 
         // Distância total
-        distanceText.setText(String.format(Locale.getDefault(), "Distância: %.2f m", totalDistance));
+        distanceText.setText(String.format(Locale.getDefault(), "Distância: %.2f km", totalDistance / 1000));
 
         // Velocidade média
         float averageSpeed = (totalDistance / durationInSeconds) * 3.6f; // m/s para km/h
